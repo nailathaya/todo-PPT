@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPT - To-Do List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@4.0.0/dist/flowbite.min.css" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#f1f5f9',
+            surface: '#ffffff',
+            border: '#e2e8f0',
+            primary: {
+              DEFAULT: '#2563eb',
+              soft: '#dbeafe',
+              hover: '#1d4ed8',
+            },
+            danger: '#dc2626',
+            text: '#0f172a',
+            muted: '#6b7280',
+          },
+          fontFamily: {
+            sans: ['system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            soft: '0 10px 25px -15px rgba(15, 23, 42, 0.5)',
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-bg text-text font-sans">
+  <div class="min-h-screen flex items-center justify-center px-4 py-10">
+    <main class="w-full max-w-3xl bg-surface rounded-2xl shadow-soft border border-border p-6 sm:p-8">
+      <header class="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">PPT To-Do List</h1>
+          <p class="text-sm text-muted mt-1">Add, edit, and manage your tasks with time ranges.</p>
+        </div>
+      </header>
+
+      <!-- Error / Status -->
+      <div id="statusBar" class="hidden mb-4">
+        <div id="statusContent" class="text-sm px-3 py-2 rounded-md"></div>
+      </div>
+
+      <!-- Add To-Do Form -->
+      <section aria-labelledby="add-todo-title" class="mb-8">
+        <h2 id="add-todo-title" class="text-lg font-medium mb-3">Add a new to-do</h2>
+        <form id="todoForm" class="grid grid-cols-1 gap-4" autocomplete="off">
+          <div>
+            <label for="todoName" class="block text-sm font-medium mb-1">Name<span class="text-red-500">*</span></label>
+            <input id="todoName" name="todoName" type="text" required
+              class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" placeholder="e.g. Prepare meeting slides" />
+          </div>
+          <div>
+            <label for="todoDescription" class="block text-sm font-medium mb-1">Description</label>
+            <textarea id="todoDescription" name="todoDescription" rows="3"
+              class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" placeholder="Add some context or notes (optional)"></textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="startTime" class="block text-sm font-medium mb-1">Start time</label>
+              <input id="startTime" name="startTime" type="time"
+                class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" />
+            </div>
+            <div>
+              <label for="endTime" class="block text-sm font-medium mb-1">End time</label>
+              <input id="endTime" name="endTime" type="time"
+                class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" />
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-3 mt-1">
+            <p class="text-xs text-muted">Fields marked with * are required. Time range is optional.</p>
+            <button type="submit"
+              class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-not-allowed"
+              id="addTodoBtn">
+              Add to-do
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- To-Do List -->
+      <section aria-labelledby="todo-list-title">
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="todo-list-title" class="text-lg font-medium">Your to-dos</h2>
+          <button id="refreshBtn" type="button"
+            class="text-xs px-2.5 py-1.5 rounded-md border border-border text-muted hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface">
+            Refresh
+          </button>
+        </div>
+        <div id="todoList" class="space-y-3" aria-live="polite"></div>
+        <p id="emptyState" class="text-sm text-muted mt-2 hidden">No to-dos yet. Add your first one above.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" tabindex="-1" aria-hidden="true"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+    <div class="bg-surface border border-border rounded-2xl shadow-soft w-full max-w-md mx-4 p-5">
+      <div class="flex items-start justify-between mb-4">
+        <h3 class="text-lg font-medium">Edit to-do</h3>
+        <button type="button" id="closeEditModal"
+          class="text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full p-1">
+          <span class="sr-only">Close</span>
+          &#10005;
+        </button>
+      </div>
+      <form id="editTodoForm" class="space-y-4">
+        <input type="hidden" id="editTodoId" />
+        <div>
+          <label for="editTodoName" class="block text-sm font-medium mb-1">Name<span class="text-red-500">*</span></label>
+          <input id="editTodoName" type="text" required
+            class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" />
+        </div>
+        <div>
+          <label for="editTodoDescription" class="block text-sm font-medium mb-1">Description</label>
+          <textarea id="editTodoDescription" rows="3"
+            class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none"></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="editStartTime" class="block text-sm font-medium mb-1">Start time</label>
+            <input id="editStartTime" type="time"
+              class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" />
+          </div>
+          <div>
+            <label for="editEndTime" class="block text-sm font-medium mb-1">End time</label>
+            <input id="editEndTime" type="time"
+              class="block w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/40 outline-none" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="cancelEditBtn"
+            class="px-3 py-2 text-sm rounded-md border border-border text-muted hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            Cancel
+          </button>
+          <button type="submit" id="saveEditBtn"
+            class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-not-allowed">
+            Save changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/parse/dist/parse.min.js"></script>
+  <script>
+    Parse.initialize('RQLhIZdmwPNSaewJv3sX0So9V2ltfYqW9o13CckU', 'I0v2vFaicTSgG2p6Pqb6JJe1GfGVJEIDMhWpCoQO');
+    Parse.serverURL = 'https://parseapi.back4app.com/';
+  </script>
+
+  <script>
+    // Simple API helpers
+    async function createTodo(data) {
+      const Todo = Parse.Object.extend('Todo');
+      const todo = new Todo();
+      todo.set('name', data.name);
+      todo.set('description', data.description || '');
+      todo.set('startTime', data.startTime || '');
+      todo.set('endTime', data.endTime || '');
+      return todo.save();
+    }
+
+    async function listTodos() {
+      const Todo = Parse.Object.extend('Todo');
+      const query = new Parse.Query(Todo);
+      query.ascending('createdAt');
+      return query.find();
+    }
+
+    async function updateTodo(id, data) {
+      const Todo = Parse.Object.extend('Todo');
+      const query = new Parse.Query(Todo);
+      const todo = await query.get(id);
+      todo.set('name', data.name);
+      todo.set('description', data.description || '');
+      todo.set('startTime', data.startTime || '');
+      todo.set('endTime', data.endTime || '');
+      return todo.save();
+    }
+
+    async function deleteTodo(id) {
+      const Todo = Parse.Object.extend('Todo');
+      const query = new Parse.Query(Todo);
+      const todo = await query.get(id);
+      return todo.destroy();
+    }
+
+    // UI logic
+    document.addEventListener('DOMContentLoaded', () => {
+      const todoForm = document.getElementById('todoForm');
+      const todoListEl = document.getElementById('todoList');
+      const emptyStateEl = document.getElementById('emptyState');
+      const statusBar = document.getElementById('statusBar');
+      const statusContent = document.getElementById('statusContent');
+      const addTodoBtn = document.getElementById('addTodoBtn');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      const editModal = document.getElementById('editModal');
+      const closeEditModalBtn = document.getElementById('closeEditModal');
+      const cancelEditBtn = document.getElementById('cancelEditBtn');
+      const editTodoForm = document.getElementById('editTodoForm');
+      const editTodoId = document.getElementById('editTodoId');
+      const editTodoName = document.getElementById('editTodoName');
+      const editTodoDescription = document.getElementById('editTodoDescription');
+      const editStartTime = document.getElementById('editStartTime');
+      const editEndTime = document.getElementById('editEndTime');
+
+      function showStatus(message, type = 'info') {
+        statusBar.classList.remove('hidden');
+        statusContent.textContent = message;
+        statusContent.className = 'text-sm px-3 py-2 rounded-md';
+        if (type === 'error') {
+          statusContent.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
+        } else if (type === 'success') {
+          statusContent.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+        } else {
+          statusContent.classList.add('bg-slate-50', 'text-muted', 'border', 'border-border');
+        }
+        setTimeout(() => {
+          statusBar.classList.add('hidden');
+        }, 4000);
+      }
+
+      function clearStatus() {
+        statusBar.classList.add('hidden');
+      }
+
+      function openEditModal(todo) {
+        editTodoId.value = todo.id;
+        editTodoName.value = todo.get('name') || '';
+        editTodoDescription.value = todo.get('description') || '';
+        editStartTime.value = todo.get('startTime') || '';
+        editEndTime.value = todo.get('endTime') || '';
+        editModal.classList.remove('hidden');
+        editModal.classList.add('flex');
+        editTodoName.focus();
+      }
+
+      function closeEditModal() {
+        editModal.classList.add('hidden');
+        editModal.classList.remove('flex');
+      }
+
+      async function renderTodos() {
+        todoListEl.innerHTML = '';
+        emptyStateEl.classList.add('hidden');
+        try {
+          const todos = await listTodos();
+          if (!todos.length) {
+            emptyStateEl.classList.remove('hidden');
+            return;
+          }
+          todos.forEach((todo) => {
+            const name = todo.get('name') || '';
+            const description = todo.get('description') || '';
+            const startTime = todo.get('startTime') || '';
+            const endTime = todo.get('endTime') || '';
+
+            const wrapper = document.createElement('article');
+            wrapper.className = 'flex items-start justify-between gap-3 rounded-xl border border-border bg-white px-3 py-3 sm:px-4 sm:py-3 shadow-sm';
+
+            const left = document.createElement('div');
+            left.className = 'min-w-0 flex-1';
+
+            const titleRow = document.createElement('div');
+            titleRow.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5';
+
+            const titleEl = document.createElement('h3');
+            titleEl.className = 'font-medium text-sm sm:text-base truncate';
+            titleEl.textContent = name;
+
+            const timeEl = document.createElement('span');
+            timeEl.className = 'text-xs text-muted bg-slate-50 border border-border rounded-full px-2 py-0.5';
+            if (startTime || endTime) {
+              timeEl.textContent = `${startTime || '—'} - ${endTime || '—'}`;
+            } else {
+              timeEl.textContent = 'No time set';
+            }
+
+            titleRow.appendChild(titleEl);
+            titleRow.appendChild(timeEl);
+
+            const descEl = document.createElement('p');
+            descEl.className = 'text-xs sm:text-sm text-muted line-clamp-2';
+            descEl.textContent = description || 'No description';
+
+            left.appendChild(titleRow);
+            left.appendChild(descEl);
+
+            const right = document.createElement('div');
+            right.className = 'flex items-center gap-2 ml-2';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.textContent = 'Edit';
+            editBtn.className = 'text-xs px-2.5 py-1.5 rounded-md border border-border text-muted hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+            editBtn.addEventListener('click', () => openEditModal(todo));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500';
+            deleteBtn.addEventListener('click', async () => {
+              const confirmed = window.confirm('Delete this to-do? This action cannot be undone.');
+              if (!confirmed) return;
+              try {
+                await deleteTodo(todo.id);
+                showStatus('To-do deleted.', 'success');
+                await renderTodos();
+              } catch (error) {
+                console.error(error);
+                showStatus(error.message || 'Failed to delete to-do.', 'error');
+              }
+            });
+
+            right.appendChild(editBtn);
+            right.appendChild(deleteBtn);
+
+            wrapper.appendChild(left);
+            wrapper.appendChild(right);
+
+            todoListEl.appendChild(wrapper);
+          });
+        } catch (error) {
+          console.error(error);
+          showStatus(error.message || 'Failed to load to-dos.', 'error');
+        }
+      }
+
+      // Form submit - create todo
+      todoForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearStatus();
+        const formData = new FormData(todoForm);
+        const name = formData.get('todoName').trim();
+        const description = formData.get('todoDescription').trim();
+        const startTime = formData.get('startTime');
+        const endTime = formData.get('endTime');
+
+        if (!name) {
+          showStatus('Name is required.', 'error');
+          return;
+        }
+
+        addTodoBtn.disabled = true;
+        addTodoBtn.textContent = 'Adding...';
+
+        try {
+          await createTodo({ name, description, startTime, endTime });
+          todoForm.reset();
+          showStatus('To-do added.', 'success');
+          await renderTodos();
+        } catch (error) {
+          console.error(error);
+          showStatus(error.message || 'Failed to add to-do.', 'error');
+        } finally {
+          addTodoBtn.disabled = false;
+          addTodoBtn.textContent = 'Add to-do';
+        }
+      });
+
+      refreshBtn.addEventListener('click', () => {
+        renderTodos();
+      });
+
+      // Edit modal events
+      closeEditModalBtn.addEventListener('click', closeEditModal);
+      cancelEditBtn.addEventListener('click', closeEditModal);
+      editModal.addEventListener('click', (e) => {
+        if (e.target === editModal) closeEditModal();
+      });
+
+      editTodoForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const id = editTodoId.value;
+        const name = editTodoName.value.trim();
+        const description = editTodoDescription.value.trim();
+        const startTime = editStartTime.value;
+        const endTime = editEndTime.value;
+
+        if (!name) {
+          showStatus('Name is required.', 'error');
+          return;
+        }
+
+        const saveBtn = document.getElementById('saveEditBtn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          await updateTodo(id, { name, description, startTime, endTime });
+          showStatus('To-do updated.', 'success');
+          closeEditModal();
+          await renderTodos();
+        } catch (error) {
+          console.error(error);
+          showStatus(error.message || 'Failed to update to-do.', 'error');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+        }
+      });
+
+      // Initial load
+      renderTodos();
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.0/dist/flowbite.min.js"></script>
+</body>
+</html>
