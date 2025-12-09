@@ -155,8 +155,10 @@
     const STORAGE_KEY = 'ppt_todos_v1';
 
     // Reset otomatis saat halaman dibuka
-    localStorage.removeItem(STORAGE_KEY);
-
+    if (!sessionStorage.getItem('visited')) {
+        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.setItem('visited', 'true');
+    }
     function loadFromStorage() {
       const data = localStorage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : [];
